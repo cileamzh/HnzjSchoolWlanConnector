@@ -1,0 +1,7 @@
+[package]
+edition = "2021"
+name = "event"
+version = "0.1.0"
+
+[dependencies]
+cileamzh-web={path="./cileamzh-web"}
