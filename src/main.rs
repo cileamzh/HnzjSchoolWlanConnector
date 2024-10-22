@@ -16,7 +16,7 @@ fn main() -> std::io::Result<()> {
     let mut account: &str = "";
     let mut password: &str = "";
     let mut identity: &str = "";
-    let mut telecom: &str = "";
+    let mut operator: &str = "";
     let stp = current_exe()
         .unwrap()
         .parent()
@@ -38,10 +38,10 @@ fn main() -> std::io::Result<()> {
                 identity = ls.next().unwrap();
             }
             "运营商" => match ls.next().unwrap() {
-                "移动" | "中国移动" => telecom = "cmcc",
-                "联通" | "中国联通" => telecom = "unicom",
-                "电信" | "中国电信" => telecom = "telecom",
-                _ => telecom = "cmcc",
+                "移动" | "中国移动" => operator = "cmcc",
+                "联通" | "中国联通" => operator = "unicom",
+                "电信" | "中国电信" => operator = "telecom",
+                _ => operator = "cmcc",
             },
 
             _ => {}
@@ -89,7 +89,7 @@ fn main() -> std::io::Result<()> {
         let qp = if !(identity == "教师" || identity == "Teacher" || identity == "teacher") {
             format!(
             "/eportal/?c=ACSetting&a=Login&loginMethod=1&protocol=http%3A&hostname=172.16.1.38&port=&iTermType=1&wlanuserip={}&wlanacip=172.20.1.1&wlanacname=&redirect=null&session=null&vlanid=0&mac=00-00-00-00-00-00&ip={}&enAdvert=0&jsVersion=2.4.3&DDDDD=%2C0%2C{}%40{}&upass={}&R1=0&R2=0&R3=0&R6=0&para=00&0MKKey=123456&buttonClicked=&redirect_url=&err_flag=&username=&password=&user=&cmd=&Login=&v6ip=",
-            all_ipv4[0], all_ipv4[0],account,telecom,password,
+            all_ipv4[0], all_ipv4[0],account,operator,password,
         )
         } else {
             format!(
