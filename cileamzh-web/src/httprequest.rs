@@ -1,4 +1,8 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    io::{Read, Write},
+    net::TcpStream,
+};
 
 use crate::meb::ToVec;
 
@@ -71,6 +75,20 @@ impl HttpRequest {
 
     pub fn body(&mut self, body: &str) {
         self.body.push_str(body);
+    }
+
+    pub fn send(&mut self) -> std::io::Result<Vec<u8>> {
+        let mut host = "localhost:80";
+        for h in self.header.iter() {
+            if h.contains("host") {
+                host = h.split(": ").nth(1).unwrap();
+            }
+        }
+        let mut buf: Vec<u8> = Vec::new();
+        let mut ts = TcpStream::connect(host)?;
+        ts.write(&self.to_vec_u8())?;
+        ts.read_to_end(&mut buf).unwrap();
+        Ok(buf)
     }
 }
 

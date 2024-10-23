@@ -9,7 +9,6 @@ use std::{
     io::{Read, Write},
     net::{TcpListener, TcpStream},
     path::Path,
-    thread::spawn,
 };
 /// HttpServer represent a server for the communication with Http protocal
 ///
@@ -52,8 +51,8 @@ impl HttpServer {
         let lst = TcpListener::bind(format!("{}:{}", host, port))?;
         self.lst.push(lst);
         for stream in self.lst[0].incoming() {
-            let stream = stream?;
-            let warelist = &self.warelist;
+            let _stream = stream?;
+            let _warelist = &self.warelist;
         }
         Ok(())
     }
@@ -109,7 +108,7 @@ fn contains_array(outer: Vec<u8>, inner: &[u8]) -> bool {
     false
 }
 
-fn handle_stream(warelist: &Vec<Ware>, mut stream: &TcpStream) -> std::io::Result<()> {
+pub fn _handle_stream(warelist: &Vec<Ware>, mut stream: &TcpStream) -> std::io::Result<()> {
     let parten = "\r\n\r\n".as_bytes();
     let mut buffer = [0; 512];
     let mut binary_http: Vec<u8> = Vec::new();
@@ -131,7 +130,11 @@ fn handle_stream(warelist: &Vec<Ware>, mut stream: &TcpStream) -> std::io::Resul
     Ok(())
 }
 
-fn through_ware(warelist: &Vec<Ware>, mut req: HttpRequest, mut res: HttpResponse) -> HttpResponse {
+pub fn through_ware(
+    warelist: &Vec<Ware>,
+    mut req: HttpRequest,
+    mut res: HttpResponse,
+) -> HttpResponse {
     let mut ware_index: usize = 0;
     loop {
         if ware_index >= warelist.len() {

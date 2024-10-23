@@ -1,8 +1,8 @@
 use cileamzh_web::HttpRequest;
 use std::{env::current_exe, fs::read_to_string, process::Command, thread, time::Duration};
 
-static STUDENT_WLAN: &str = "HNZJ-Student";
 static MAX_RETRY: u8 = 5;
+static STUDENT_WLAN: &str = "HNZJ-Student";
 static TEACHER_WLAN: &str = "HNZJ-Teacher";
 fn main() -> std::io::Result<()> {
     let mut account: &str = "";
@@ -33,7 +33,7 @@ fn main() -> std::io::Result<()> {
                 "移动" | "中国移动" => operator = "cmcc",
                 "联通" | "中国联通" => operator = "unicom",
                 "电信" | "中国电信" => operator = "telecom",
-                _ => operator = "cmcc",
+                _ => operator = "none",
             },
 
             _ => {}
