@@ -1,16 +1,8 @@
-use cileamzh_web::{meb::ToVec, HttpRequest};
-use std::{
-    env::current_exe,
-    fs::read_to_string,
-    io::{Read, Write},
-    net::TcpStream,
-    process::Command,
-    thread,
-    time::Duration,
-};
+use cileamzh_web::HttpRequest;
+use std::{env::current_exe, fs::read_to_string, process::Command, thread, time::Duration};
 
 static STUDENT_WLAN: &str = "HNZJ-Student";
-
+static MAX_RETRY: u8 = 5;
 static TEACHER_WLAN: &str = "HNZJ-Teacher";
 fn main() -> std::io::Result<()> {
     let mut account: &str = "";
@@ -47,7 +39,6 @@ fn main() -> std::io::Result<()> {
             _ => {}
         }
     }
-    println!("{}{}{}", account, password, identity);
 
     let cout = Command::new("netsh")
         .args([
@@ -74,11 +65,16 @@ fn main() -> std::io::Result<()> {
         ])
         .output()?;
     let coutr = String::from_utf8_lossy(&cout.stdout);
-    println!("{}", coutr);
+    let mut cmdout: String;
     if coutr.to_string().contains("successfully") {
-        thread::sleep(Duration::from_secs(2));
-        let output = Command::new("ipconfig").output().unwrap();
-        let cmdout = String::from_utf8_lossy(&output.stdout);
+        loop {
+            let output = Command::new("ipconfig").output().unwrap();
+            cmdout = String::from_utf8_lossy(&output.stdout).to_string();
+
+            if cmdout.contains("IPv4 Address") {
+                break;
+            }
+        }
 
         let mut all_ipv4: Vec<String> = Vec::new();
         for line in cmdout.lines() {
@@ -103,20 +99,48 @@ fn main() -> std::io::Result<()> {
         req.protocol = "HTTP/1.1".to_string();
         req.path = qp;
         req.push_header("host: 172.16.1.38:801");
-        let mut s = TcpStream::connect("172.16.1.38:801")?;
-        s.write(&req.to_vec_u8()).unwrap();
-        s.flush()?;
-        let mut buf = Vec::new();
-        s.read_to_end(&mut buf)?;
-        let r = String::from_utf8_lossy(&buf);
-        println!("{}", r);
-        if r.contains("RetCode=4&ErrorMsg") {
-            thread::sleep(Duration::from_secs(2));
-            let mut s = TcpStream::connect("172.16.1.38:801")?;
-            s.write(&req.to_vec_u8()).unwrap();
-            s.flush()?;
+        let mut buf: Vec<u8>;
+        let mut retrytimes = 1;
+        loop {
+            match req.send() {
+                Ok(r) => {
+                    buf = r;
+                    let rs = String::from_utf8_lossy(&buf);
+                    println!("正在连接");
+                    retrytimes = retrytimes + 1;
+                    if !rs.contains("RetCode=1&ErrorMsg") {
+                        break;
+                    }
+                    if retrytimes > MAX_RETRY {
+                        println!("连接超时，程序退出");
+                        break;
+                    }
+                    thread::sleep(Duration::from_secs(2));
+                }
+                Err(e) => {
+                    eprintln!(
+                        "已尝试连接{}次\r\n请求失败错误为：{}\r\n尝试再次连接",
+                        retrytimes, e
+                    );
+                    thread::sleep(Duration::from_secs(2));
+                }
+            }
+        }
+        let rs = String::from_utf8_lossy(&buf);
+        if rs.contains("RetCode=4&ErrorMsg") {
+            thread::sleep(Duration::from_secs(3));
+            loop {
+                match req.send() {
+                    Ok(_r) => {
+                        break;
+                    }
+                    Err(e) => {
+                        eprintln!("false retry err:{}", e);
+                        thread::sleep(Duration::from_secs(2));
+                    }
+                }
+            }
         }
     }
-
     Ok(())
 }
