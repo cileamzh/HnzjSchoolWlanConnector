@@ -65,35 +65,9 @@ fn main() -> std::io::Result<()> {
         ])
         .output()?;
     let coutr = String::from_utf8_lossy(&cout.stdout);
-    let mut cmdout: String;
+
     if coutr.to_string().contains("successfully") {
-        loop {
-            let output = Command::new("ipconfig").output().unwrap();
-            cmdout = String::from_utf8_lossy(&output.stdout).to_string();
-
-            if cmdout.contains("IPv4 Address") {
-                break;
-            }
-        }
-
-        let mut all_ipv4: Vec<String> = Vec::new();
-        for line in cmdout.lines() {
-            if line.contains("IPv4 Address") {
-                all_ipv4.push(line.split(": ").nth(1).unwrap().to_string());
-            }
-        }
-        let qp = if !(identity == "教师" || identity == "Teacher" || identity == "teacher") {
-            format!(
-            "/eportal/?c=ACSetting&a=Login&loginMethod=1&protocol=http%3A&hostname=172.16.1.38&port=&iTermType=1&wlanuserip={}&wlanacip=172.20.1.1&wlanacname=&redirect=null&session=null&vlanid=0&mac=00-00-00-00-00-00&ip={}&enAdvert=0&jsVersion=2.4.3&DDDDD=%2C0%2C{}%40{}&upass={}&R1=0&R2=0&R3=0&R6=0&para=00&0MKKey=123456&buttonClicked=&redirect_url=&err_flag=&username=&password=&user=&cmd=&Login=&v6ip=",
-            all_ipv4[0], all_ipv4[0],account,operator,password,
-        )
-        } else {
-            format!(
-            "/eportal/?c=ACSetting&a=Login&loginMethod=1&protocol=http%3A&hostname=172.16.1.38&port=&iTermType=1&wlanuserip={}&wlanacip=172.20.1.1&wlanacname=&redirect=null&session=null&vlanid=0&mac=00-00-00-00-00-00&ip={}&enAdvert=0&jsVersion=2.4.3&DDDDD=%2C0%2C{}&upass={}&R1=0&R2=0&R3=0&R6=0&para=00&0MKKey=123456&buttonClicked=&redirect_url=&err_flag=&username=&password=&user=&cmd=&Login=&v6ip=",
-            all_ipv4[0],all_ipv4[0],account,password,
-        )
-        };
-
+        let qp = get_qp(identity, account, password, operator);
         let mut req = HttpRequest::new();
         req.method = "GET".to_string();
         req.protocol = "HTTP/1.1".to_string();
@@ -109,6 +83,7 @@ fn main() -> std::io::Result<()> {
                     println!("正在连接");
                     retrytimes = retrytimes + 1;
                     if !rs.contains("RetCode=1&ErrorMsg") {
+                        println!("连接成功");
                         break;
                     }
                     if retrytimes > MAX_RETRY {
@@ -116,10 +91,11 @@ fn main() -> std::io::Result<()> {
                         break;
                     }
                     thread::sleep(Duration::from_secs(2));
+                    req.path = get_qp(identity, account, password, operator);
                 }
                 Err(e) => {
                     eprintln!(
-                        "已尝试连接{}次\r\n请求失败错误为：{}\r\n尝试再次连接",
+                        "已尝试连接{}次\r\n请求失败错误为: {}\r\n尝试再次连接",
                         retrytimes, e
                     );
                     thread::sleep(Duration::from_secs(2));
@@ -142,5 +118,38 @@ fn main() -> std::io::Result<()> {
             }
         }
     }
+
     Ok(())
+}
+
+fn get_qp(identity: &str, account: &str, password: &str, operator: &str) -> String {
+    let mut cmdout;
+    loop {
+        let output = Command::new("ipconfig").output().unwrap();
+        cmdout = String::from_utf8_lossy(&output.stdout).to_string();
+
+        if cmdout.contains("IPv4 Address") {
+            break;
+        }
+    }
+
+    let mut all_ipv4: Vec<String> = Vec::new();
+    for line in cmdout.lines() {
+        if line.contains("IPv4 Address") {
+            all_ipv4.push(line.split(": ").nth(1).unwrap().to_string());
+        }
+    }
+    let addr = all_ipv4[0].clone();
+    let qp = if !(identity == "教师" || identity == "Teacher" || identity == "teacher") {
+        format!(
+        "/eportal/?c=ACSetting&a=Login&loginMethod=1&protocol=http%3A&hostname=172.16.1.38&port=&iTermType=1&wlanuserip={}&wlanacip=172.20.1.1&wlanacname=&redirect=null&session=null&vlanid=0&mac=00-00-00-00-00-00&ip={}&enAdvert=0&jsVersion=2.4.3&DDDDD=%2C0%2C{}%40{}&upass={}&R1=0&R2=0&R3=0&R6=0&para=00&0MKKey=123456&buttonClicked=&redirect_url=&err_flag=&username=&password=&user=&cmd=&Login=&v6ip=",
+        addr, addr,account,operator,password,
+    )
+    } else {
+        format!(
+        "/eportal/?c=ACSetting&a=Login&loginMethod=1&protocol=http%3A&hostname=172.16.1.38&port=&iTermType=1&wlanuserip={}&wlanacip=172.20.1.1&wlanacname=&redirect=null&session=null&vlanid=0&mac=00-00-00-00-00-00&ip={}&enAdvert=0&jsVersion=2.4.3&DDDDD=%2C0%2C{}&upass={}&R1=0&R2=0&R3=0&R6=0&para=00&0MKKey=123456&buttonClicked=&redirect_url=&err_flag=&username=&password=&user=&cmd=&Login=&v6ip=",
+        addr,addr,account,password,
+    )
+    };
+    qp
 }
