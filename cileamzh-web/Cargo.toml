@@ -1,5 +1,0 @@
-[package]
-edition = "2021"
-name = "cileamzh-web"
-version = "1.0.0"
-[dependencies]

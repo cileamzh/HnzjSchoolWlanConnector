@@ -4,4 +4,4 @@ name = "hnzjconnector"
 version = "0.1.0"
 
 [dependencies]
-cileamzh-web={path="./cileamzh-web"}
+

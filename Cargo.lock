@@ -3,12 +3,5 @@
 version = 3
 
 [[package]]
-name = "cileamzh-web"
-version = "1.0.0"
-
-[[package]]
 name = "hnzjconnector"
 version = "0.1.0"
-dependencies = [
- "cileamzh-web",
-]

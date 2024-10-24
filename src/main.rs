@@ -1,9 +1,9 @@
-use cileamzh_web::HttpRequest;
 use std::{env::current_exe, fs::read_to_string, process::Command, thread, time::Duration};
 
 static MAX_RETRY: u8 = 5;
 static STUDENT_WLAN: &str = "HNZJ-Student";
 static TEACHER_WLAN: &str = "HNZJ-Teacher";
+
 fn main() -> std::io::Result<()> {
     let mut account: &str = "";
     let mut password: &str = "";
@@ -66,7 +66,7 @@ fn main() -> std::io::Result<()> {
         .output()?;
     let coutr = String::from_utf8_lossy(&cout.stdout);
 
-    if coutr.to_string().contains("successfully") {
+    if coutr.to_string().contains("successfully") | coutr.to_string().contains("已成功") {
         let qp = get_qp(identity, account, password, operator);
         let mut req = HttpRequest::new();
         req.method = "GET".to_string();
@@ -81,13 +81,16 @@ fn main() -> std::io::Result<()> {
                     buf = r;
                     let rs = String::from_utf8_lossy(&buf);
                     println!("正在连接");
+                    std::io::stdout().flush()?;
                     retrytimes = retrytimes + 1;
                     if !rs.contains("RetCode=1&ErrorMsg") {
                         println!("连接成功");
+                        std::io::stdout().flush()?;
                         break;
                     }
                     if retrytimes > MAX_RETRY {
                         println!("连接超时，程序退出");
+                        std::io::stdout().flush()?;
                         break;
                     }
                     thread::sleep(Duration::from_secs(2));
@@ -98,6 +101,7 @@ fn main() -> std::io::Result<()> {
                         "已尝试连接{}次\r\n请求失败错误为: {}\r\n尝试再次连接",
                         retrytimes, e
                     );
+                    std::io::stdout().flush()?;
                     thread::sleep(Duration::from_secs(2));
                 }
             }
@@ -112,11 +116,14 @@ fn main() -> std::io::Result<()> {
                     }
                     Err(e) => {
                         eprintln!("false retry err:{}", e);
+                        std::io::stdout().flush()?;
                         thread::sleep(Duration::from_secs(2));
                     }
                 }
             }
         }
+    } else {
+        println!("未找到校园网")
     }
 
     Ok(())
@@ -135,7 +142,7 @@ fn get_qp(identity: &str, account: &str, password: &str, operator: &str) -> Stri
 
     let mut all_ipv4: Vec<String> = Vec::new();
     for line in cmdout.lines() {
-        if line.contains("IPv4 Address") {
+        if line.contains("IPv4 Address") | line.contains("IPv4 地址") {
             all_ipv4.push(line.split(": ").nth(1).unwrap().to_string());
         }
     }
@@ -152,4 +159,167 @@ fn get_qp(identity: &str, account: &str, password: &str, operator: &str) -> Stri
     )
     };
     qp
+}
+
+use std::{
+    collections::HashMap,
+    io::{Read, Write},
+    net::TcpStream,
+};
+
+pub struct HttpRequest {
+    pub params: String,
+    pub path: String,
+    pub method: String,
+    pub protocol: String,
+    pub header: Vec<String>,
+    pub body: String,
+    pub binary: Vec<u8>,
+    pub map: HashMap<String, String>,
+}
+impl HttpRequest {
+    pub fn new() -> Self {
+        Self {
+            params: String::new(),
+            path: String::new(),
+            method: String::new(),
+            protocol: String::new(),
+            header: Vec::new(),
+            body: String::new(),
+            binary: Vec::new(),
+            map: HashMap::new(),
+        }
+    }
+
+    pub fn from(buf: Vec<u8>) -> Self {
+        let parten = "\r\n\r\n".as_bytes();
+        let mut req = Self {
+            params: String::new(),
+            path: String::new(),
+            method: String::new(),
+            protocol: String::new(),
+            header: Vec::new(),
+            body: String::new(),
+            binary: Vec::new(),
+            map: HashMap::new(),
+        };
+
+        let r = split_buf(buf, parten.to_vec());
+
+        let head = String::from_utf8_lossy(&r[0]);
+
+        let mut result = head.split("\r\n");
+
+        let fl: Vec<&str> = result.next().unwrap_or("").split(" ").collect();
+
+        let header: Vec<String> = result.map(|s| s.to_owned()).collect();
+
+        req.body = String::from_utf8_lossy(&r[1]).to_string();
+        req.binary = r[1].clone();
+
+        req.method = fl[0].to_owned();
+        req.path = fl[1].split("?").nth(0).unwrap_or(fl[1]).to_owned();
+        req.params = fl[1].split("?").nth(1).unwrap_or("").to_owned();
+        req.protocol = fl[2].to_owned();
+
+        req.header = header;
+        req
+    }
+
+    pub fn cookies(&mut self, cookie: &str) {
+        self.header.push(format!("Cookie: {cookie}"));
+    }
+
+    pub fn push_header(&mut self, header: &str) {
+        self.header.push(header.to_string());
+    }
+
+    pub fn body(&mut self, body: &str) {
+        self.body.push_str(body);
+    }
+
+    pub fn send(&mut self) -> std::io::Result<Vec<u8>> {
+        let mut host = "localhost:80";
+        for h in self.header.iter() {
+            if h.contains("host") {
+                host = h.split(": ").nth(1).unwrap();
+            }
+        }
+        let mut buf: Vec<u8> = Vec::new();
+        let mut ts = TcpStream::connect(host)?;
+        ts.write(&self.to_vec_u8())?;
+        ts.read_to_end(&mut buf).unwrap();
+        Ok(buf)
+    }
+}
+
+pub trait ToVec {
+    fn to_vec_u8(&self) -> Vec<u8>;
+}
+
+impl ToVec for String {
+    fn to_vec_u8(&self) -> Vec<u8> {
+        self.as_bytes().to_vec()
+    }
+}
+
+impl ToVec for &str {
+    fn to_vec_u8(&self) -> Vec<u8> {
+        self.as_bytes().to_vec()
+    }
+}
+
+impl ToVec for HttpRequest {
+    fn to_vec_u8(&self) -> Vec<u8> {
+        let mut buf: Vec<u8> = Vec::new();
+        buf.append(&mut self.method.to_vec_u8());
+        buf.append(&mut " ".to_vec_u8());
+        buf.append(&mut self.path.to_vec_u8());
+        buf.append(&mut self.params.to_vec_u8());
+        buf.append(&mut " ".to_vec_u8());
+        buf.append(&mut self.protocol.to_vec_u8());
+        for head in &self.header {
+            buf.append(&mut format!("\r\n{}", head).to_vec_u8());
+        }
+        buf.append(&mut "\r\n\r\n".to_vec_u8());
+        buf.append(&mut self.body.to_vec_u8());
+        buf.append(&mut self.binary.to_vec());
+        buf.append(&mut "\r\n0\r\n\r\n".to_vec_u8());
+        buf
+    }
+}
+
+fn split_buf(buf: Vec<u8>, pattern: Vec<u8>) -> Vec<Vec<u8>> {
+    let mut result = Vec::new();
+    let mut start = 0;
+
+    while let Some(pos) = buf[start..]
+        .windows(pattern.len())
+        .position(|window| window == pattern.as_slice())
+    {
+        let end = start + pos;
+        if start < end {
+            result.push(buf[start..end].to_vec()); // Push the chunk before the pattern
+        }
+        start = end + pattern.len(); // Move past the pattern
+    }
+
+    if start < buf.len() {
+        result.push(buf[start..].to_vec()); // Push the remaining part after the last pattern
+    }
+    result
+}
+fn _contains_array(outer: Vec<u8>, inner: &[u8]) -> bool {
+    // Check if the inner array is longer than the outer array
+    if inner.len() > outer.len() {
+        return false;
+    }
+
+    // Check for the inner array in the outer array
+    for window in outer.windows(inner.len()) {
+        if window == inner {
+            return true;
+        }
+    }
+    false
 }
