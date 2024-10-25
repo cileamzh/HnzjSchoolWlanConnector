@@ -64,9 +64,11 @@ fn main() -> std::io::Result<()> {
             .as_str(),
         ])
         .output()?;
-    let coutr = String::from_utf8_lossy(&cout.stdout);
-
-    if coutr.to_string().contains("successfully") | coutr.to_string().contains("已成功") {
+    let er = String::from_utf8_lossy(&cout.stdout);
+    let cr = encoding::all::GBK
+        .decode(&cout.stdout, DecoderTrap::Strict)
+        .unwrap_or("change false".to_string());
+    if er.to_string().contains("successfully") | cr.contains("成功") | er.contains("成功") {
         let qp = get_qp(identity, account, password, operator);
         let mut req = HttpRequest::new();
         req.method = "GET".to_string();
@@ -130,22 +132,34 @@ fn main() -> std::io::Result<()> {
 }
 
 fn get_qp(identity: &str, account: &str, password: &str, operator: &str) -> String {
-    let mut cmdout;
+    let mut englishr;
+    let mut chineser;
+    let mut all_ipv4: Vec<String> = Vec::new();
     loop {
         let output = Command::new("ipconfig").output().unwrap();
-        cmdout = String::from_utf8_lossy(&output.stdout).to_string();
+        chineser = encoding::all::GBK
+            .decode(&output.stdout, DecoderTrap::Strict)
+            .unwrap_or("False to change".to_string());
+        englishr = String::from_utf8_lossy(&output.stdout).to_string();
 
-        if cmdout.contains("IPv4 Address") {
+        if englishr.contains("IPv4 Address") | englishr.contains("IPv4 地址") {
+            for line in englishr.lines() {
+                if line.contains("IPv4 Address") {
+                    all_ipv4.push(line.split(": ").nth(1).unwrap().to_string());
+                }
+            }
+            break;
+        }
+        if chineser.contains("IPv4 地址") {
+            for line in chineser.lines() {
+                if line.contains("IPv4 地址") {
+                    all_ipv4.push(line.split(": ").nth(1).unwrap().to_string());
+                }
+            }
             break;
         }
     }
 
-    let mut all_ipv4: Vec<String> = Vec::new();
-    for line in cmdout.lines() {
-        if line.contains("IPv4 Address") | line.contains("IPv4 地址") {
-            all_ipv4.push(line.split(": ").nth(1).unwrap().to_string());
-        }
-    }
     let addr = all_ipv4[0].clone();
     let qp = if !(identity == "教师" || identity == "Teacher" || identity == "teacher") {
         format!(
@@ -166,6 +180,8 @@ use std::{
     io::{Read, Write},
     net::TcpStream,
 };
+
+use encoding::{DecoderTrap, Encoding};
 
 pub struct HttpRequest {
     pub params: String,
@@ -308,18 +324,4 @@ fn split_buf(buf: Vec<u8>, pattern: Vec<u8>) -> Vec<Vec<u8>> {
         result.push(buf[start..].to_vec()); // Push the remaining part after the last pattern
     }
     result
-}
-fn _contains_array(outer: Vec<u8>, inner: &[u8]) -> bool {
-    // Check if the inner array is longer than the outer array
-    if inner.len() > outer.len() {
-        return false;
-    }
-
-    // Check for the inner array in the outer array
-    for window in outer.windows(inner.len()) {
-        if window == inner {
-            return true;
-        }
-    }
-    false
 }
