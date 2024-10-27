@@ -147,7 +147,7 @@ fn get_qp(identity: &str, account: &str, password: &str, operator: &str) -> Stri
         {
             let mut sr = englishr.split("Wireless LAN adapter WLAN");
             for l in sr.nth(1).unwrap().lines() {
-                if l.contains("IPv4 Adress") | l.contains("IPv4 Address") {
+                if l.contains("IPv4 地址") | l.contains("IPv4 Address") {
                     all_ipv4.push(l.split(": ").nth(1).unwrap().to_string());
                 }
             }
