@@ -132,6 +132,7 @@ fn main() -> std::io::Result<()> {
 }
 
 fn get_qp(identity: &str, account: &str, password: &str, operator: &str) -> String {
+    thread::sleep(Duration::from_secs(2));
     let mut englishr;
     let mut chineser;
     let mut all_ipv4: Vec<String> = Vec::new();
@@ -142,29 +143,32 @@ fn get_qp(identity: &str, account: &str, password: &str, operator: &str) -> Stri
             .unwrap_or("False to change".to_string());
         englishr = String::from_utf8_lossy(&output.stdout).to_string();
 
-        if englishr.contains("Wireless LAN adapter WLAN")
-            | englishr.contains("无线局域网适配器 WLAN")
-        {
-            let mut sr = englishr.split("Wireless LAN adapter WLAN");
+        if englishr.contains("IPv4 Address") {
+            let mut sr = englishr.split("Wireless LAN adapter WLAN:");
+
             for l in sr.nth(1).unwrap().lines() {
-                if l.contains("IPv4 地址") | l.contains("IPv4 Address") {
+                if l.contains("IPv4 Address") {
                     all_ipv4.push(l.split(": ").nth(1).unwrap().to_string());
                 }
             }
-            break;
         }
-        if chineser.contains("无线局域网适配器 WLAN") {
-            let mut sr = chineser.split("无线局域网适配器 WLAN");
+        if chineser.contains("IPv4 地址") {
+            let mut sr = chineser.split("无线局域网适配器 WLAN:");
+
             for l in sr.nth(1).unwrap().lines() {
                 if l.contains("IPv4 地址") | l.contains("IPv4 Address") {
                     all_ipv4.push(l.split(": ").nth(1).unwrap().to_string());
                 }
             }
+        }
+        thread::sleep(Duration::from_secs(1));
+        if all_ipv4.len() >= 1 {
             break;
         }
     }
 
     let addr = all_ipv4[0].clone();
+
     let qp = if !(identity == "教师" || identity == "Teacher" || identity == "teacher") {
         format!(
         "/eportal/?c=ACSetting&a=Login&loginMethod=1&protocol=http%3A&hostname=172.16.1.38&port=&iTermType=1&wlanuserip={}&wlanacip=172.20.1.1&wlanacname=&redirect=null&session=null&vlanid=0&mac=00-00-00-00-00-00&ip={}&enAdvert=0&jsVersion=2.4.3&DDDDD=%2C0%2C{}%40{}&upass={}&R1=0&R2=0&R3=0&R6=0&para=00&0MKKey=123456&buttonClicked=&redirect_url=&err_flag=&username=&password=&user=&cmd=&Login=&v6ip=",
