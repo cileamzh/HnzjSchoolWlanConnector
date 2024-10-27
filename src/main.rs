@@ -142,18 +142,22 @@ fn get_qp(identity: &str, account: &str, password: &str, operator: &str) -> Stri
             .unwrap_or("False to change".to_string());
         englishr = String::from_utf8_lossy(&output.stdout).to_string();
 
-        if englishr.contains("IPv4 Address") | englishr.contains("IPv4 地址") {
-            for line in englishr.lines() {
-                if line.contains("IPv4 Address") {
-                    all_ipv4.push(line.split(": ").nth(1).unwrap().to_string());
+        if englishr.contains("Wireless LAN adapter WLAN")
+            | englishr.contains("无线局域网适配器 WLAN")
+        {
+            let mut sr = englishr.split("Wireless LAN adapter WLAN");
+            for l in sr.nth(1).unwrap().lines() {
+                if l.contains("IPv4 Adress") | l.contains("IPv4 Address") {
+                    all_ipv4.push(l.split(": ").nth(1).unwrap().to_string());
                 }
             }
             break;
         }
-        if chineser.contains("IPv4 地址") {
-            for line in chineser.lines() {
-                if line.contains("IPv4 地址") {
-                    all_ipv4.push(line.split(": ").nth(1).unwrap().to_string());
+        if chineser.contains("无线局域网适配器 WLAN") {
+            let mut sr = chineser.split("无线局域网适配器 WLAN");
+            for l in sr.nth(1).unwrap().lines() {
+                if l.contains("IPv4 地址") | l.contains("IPv4 Address") {
+                    all_ipv4.push(l.split(": ").nth(1).unwrap().to_string());
                 }
             }
             break;

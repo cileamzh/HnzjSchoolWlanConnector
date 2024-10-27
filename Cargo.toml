@@ -4,4 +4,4 @@ name = "hnzjconnector"
 version = "0.1.0"
 
 [dependencies]
-
+encoding = "0.2"
